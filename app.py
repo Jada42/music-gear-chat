@@ -704,7 +704,7 @@ Query: {question}"""
 
 def main():
     st.set_page_config(
-        page_title="Your GPT for your Gear",
+        page_title="Manual GPT Chat",
         page_icon="🎵",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -712,8 +712,8 @@ def main():
     
     load_custom_css()
     
-    st.title("🎵 Manual ChatGPT")
-    st.markdown("#### *Chat with your gear!*")
+    st.title("Music Gear GPT")
+    st.markdown("#### *Chat with your gear's manual:*")
     st.markdown("---")
     
     # Check API key
@@ -806,7 +806,7 @@ def main():
             
             question = st.text_area(
                 "What do you want to know?",
-                placeholder="e.g., How do I record samples on my Octatrack? Or: Compare Digitakt vs Digitone",
+                placeholder="e.g., How do I record a drum loop with the Octatrack? Or: Compare Digitakt vs Digitone",
                 height=150,
                 key="question_text_area",
                 value=st.session_state.get("question_text_area", "")
@@ -860,6 +860,27 @@ def main():
                             
                             if not results or not results["documents"] or not results["documents"][0]:
                                 st.warning("No relevant information found. Try uploading the manual for your gear or rephrasing your question!")
+                                
+                                # User-first fallback options
+                                st.markdown("---")
+                                st.markdown("**🤝 Still need help?**")
+                                col_help1, col_help2, col_help3 = st.columns(3)
+                                
+                                with col_help1:
+                                    st.markdown("💬 **Community Support**")
+                                    st.markdown("[r/Elektron Reddit](https://reddit.com/r/Elektron)")
+                                    st.markdown("[Elektronauts Forum](https://www.elektronauts.com)")
+                                
+                                with col_help2:
+                                    st.markdown("📹 **Video Tutorials**") 
+                                    st.markdown("[YouTube Search](https://youtube.com/results?search_query=elektron+tutorial)")
+                                    st.markdown("[Elektron YouTube](https://youtube.com/user/elektron)")
+                                
+                                with col_help3:
+                                    st.markdown("📧 **Official Support**")
+                                    st.markdown("[Elektron Support](https://www.elektron.se/support/)")
+                                    st.markdown("[Contact Form](https://www.elektron.se/support/contact/)")
+                                    
                             else:
                                 context_chunks = results["documents"][0]
                                 answer = generate_answer(context_chunks, question)
@@ -917,6 +938,30 @@ def main():
 - "Recording workflow from hardware to DAW"
 - "MIDI chain setup for sequencing multiple devices"
 - "Sample organization best practices"
+""")
+            
+        # Community resources
+        with st.expander("🤝 Community & Additional Resources", expanded=False):
+            st.markdown("""
+**Can't find what you're looking for? The community is here to help:**
+
+**Reddit Communities:**
+- [r/Elektron](https://reddit.com/r/Elektron) - Active Elektron community
+- [r/WeAreTheMusicMakers](https://reddit.com/r/WeAreTheMusicMakers) - General music production
+
+**Forums & Communities:**
+- [Elektronauts](https://www.elektronauts.com) - Official Elektron community
+- [Gearspace](https://gearspace.com) - Music gear discussions
+
+**Video Learning:**
+- [Elektron YouTube Channel](https://youtube.com/user/elektron) - Official tutorials
+- [YouTube Search](https://youtube.com/results?search_query=elektron+tutorial) - Community tutorials
+
+**Official Support:**
+- [Elektron Support Center](https://www.elektron.se/support/) - Official documentation and downloads
+- [Contact Elektron](https://www.elektron.se/support/contact/) - Direct support
+
+*Remember: This app is made by the community, for the community. When in doubt, the collective wisdom of fellow musicians is invaluable!*
 """)
 
 if __name__ == "__main__":
