@@ -2,11 +2,11 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 import openai
-import chromadb
 import PyPDF2
 import numpy as np
 from typing import List
-import glob # Added for listing PDF files
+import pickle
+import faiss
 
 # Suppress warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -134,12 +134,123 @@ def load_custom_css():
     </style>
     """, unsafe_allow_html=True)
 
+# Simple Vector Database using FAISS
+class SimpleVectorDB:
+    def __init__(self, db_path="./vector_db"):
+        self.db_path = db_path
+        self.embeddings = []
+        self.documents = []
+        self.metadatas = []
+        self.index = None
+        self.dimension = 1536  # OpenAI embedding dimension
+        
+        # Create directory if it doesn't exist
+        os.makedirs(db_path, exist_ok=True)
+        
+        # Load existing database if available
+        self.load_database()
+    
+    def add_documents(self, documents, metadatas, embeddings):
+        """Add documents to the vector database"""
+        # Convert embeddings to numpy array
+        embeddings_array = np.array(embeddings, dtype=np.float32)
+        
+        if self.index is None:
+            # Create new FAISS index
+            self.index = faiss.IndexFlatIP(self.dimension)  # Inner product (cosine similarity)
+            
+        # Normalize embeddings for cosine similarity
+        faiss.normalize_L2(embeddings_array)
+        
+        # Add to FAISS index
+        self.index.add(embeddings_array)
+        
+        # Store documents and metadata
+        self.documents.extend(documents)
+        self.metadatas.extend(metadatas)
+        self.embeddings.extend(embeddings)
+        
+        # Save to disk
+        self.save_database()
+    
+    def search(self, query_embedding, n_results=3, gear_filter=None):
+        """Search for similar documents"""
+        if self.index is None or self.index.ntotal == 0:
+            return {"documents": [[]], "metadatas": [[]]}
+        
+        # Normalize query embedding
+        query_array = np.array([query_embedding], dtype=np.float32)
+        faiss.normalize_L2(query_array)
+        
+        # Search
+        scores, indices = self.index.search(query_array, min(n_results * 2, self.index.ntotal))
+        
+        # Filter results
+        filtered_docs = []
+        filtered_metas = []
+        
+        for i, idx in enumerate(indices[0]):
+            if len(filtered_docs) >= n_results:
+                break
+                
+            if idx >= 0 and idx < len(self.documents):
+                metadata = self.metadatas[idx]
+                
+                # Apply gear filter if specified
+                if gear_filter is None or metadata.get("gear") == gear_filter:
+                    filtered_docs.append(self.documents[idx])
+                    filtered_metas.append(metadata)
+        
+        return {
+            "documents": [filtered_docs],
+            "metadatas": [filtered_metas]
+        }
+    
+    def get_all_gear(self):
+        """Get list of all available gear"""
+        return list(set([meta.get("gear", "") for meta in self.metadatas if meta.get("gear")]))
+    
+    def save_database(self):
+        """Save database to disk"""
+        try:
+            if self.index is not None:
+                faiss.write_index(self.index, os.path.join(self.db_path, "index.faiss"))
+            
+            # Save documents and metadata
+            with open(os.path.join(self.db_path, "documents.pkl"), "wb") as f:
+                pickle.dump({
+                    "documents": self.documents,
+                    "metadatas": self.metadatas,
+                    "embeddings": self.embeddings
+                }, f)
+        except Exception as e:
+            st.error(f"Error saving database: {str(e)}")
+    
+    def load_database(self):
+        """Load database from disk"""
+        try:
+            index_path = os.path.join(self.db_path, "index.faiss")
+            docs_path = os.path.join(self.db_path, "documents.pkl")
+            
+            if os.path.exists(index_path) and os.path.exists(docs_path):
+                # Load FAISS index
+                self.index = faiss.read_index(index_path)
+                
+                # Load documents and metadata
+                with open(docs_path, "rb") as f:
+                    data = pickle.load(f)
+                    self.documents = data["documents"]
+                    self.metadatas = data["metadatas"]
+                    self.embeddings = data["embeddings"]
+                    
+                st.sidebar.info(f"📚 Loaded {len(self.documents)} manual sections")
+        except Exception as e:
+            st.sidebar.warning(f"Starting with fresh database: {str(e)}")
+
 @st.cache_resource
 def init_components():
-    """Initialize ChromaDB collection with persistent storage"""
-    client = chromadb.PersistentClient(path="./chroma_db")  # This saves to disk!
-    collection = client.get_or_create_collection("gear_manuals")
-    return collection
+    """Initialize Vector Database"""
+    return SimpleVectorDB()
 
 def extract_text_from_pdf(pdf_file):
     """Extract text from uploaded PDF"""
@@ -166,7 +277,7 @@ def create_embeddings(texts: List[str]):
     """Create embeddings using OpenAI"""
     try:
         response = openai.embeddings.create(
-            model="text-embedding-3-small",  # Very cheap and good quality
+            model="text-embedding-3-small",
             input=texts
         )
         return [embedding.embedding for embedding in response.data]
@@ -174,8 +285,8 @@ def create_embeddings(texts: List[str]):
         st.error(f"Error creating embeddings: {str(e)}")
         return None
 
-def add_manual_to_db(collection, text, gear_name):
-    """Add manual chunks to ChromaDB using OpenAI embeddings"""
+def add_manual_to_db(vector_db, text, gear_name):
+    """Add manual chunks to vector database using OpenAI embeddings"""
     chunks = chunk_text(text)
     
     if not chunks:
@@ -187,23 +298,17 @@ def add_manual_to_db(collection, text, gear_name):
     if embeddings is None:
         return False
     
-    # Add to collection
-    ids = [f"{gear_name}_{i}" for i in range(len(chunks))]
+    # Create metadata
     metadatas = [{"gear": gear_name, "chunk_id": i} for i in range(len(chunks))]
     
     try:
-        collection.add(
-            embeddings=embeddings,
-            documents=chunks,
-            metadatas=metadatas,
-            ids=ids
-        )
+        vector_db.add_documents(chunks, metadatas, embeddings)
         return True
     except Exception as e:
         st.error(f"Error adding to database: {str(e)}")
         return False
 
-def search_manual(collection, query, gear_filter=None, n_results=3):
+def search_manual(vector_db, query, gear_filter=None, n_results=3):
     """Search for relevant chunks using OpenAI embeddings"""
     try:
         # Create query embedding
@@ -212,18 +317,77 @@ def search_manual(collection, query, gear_filter=None, n_results=3):
         if query_embeddings is None:
             return None
         
-        where_clause = {"gear": gear_filter} if gear_filter else None
-        
-        results = collection.query(
-            query_embeddings=query_embeddings,
-            n_results=n_results,
-            where=where_clause
-        )
-        
+        results = vector_db.search(query_embeddings[0], n_results, gear_filter)
         return results
     except Exception as e:
         st.error(f"Error searching: {str(e)}")
         return None
+
+def preload_elektron_manuals(vector_db):
+    """Preload Elektron manuals from the manuals/ folder"""
+    
+    # Check if manuals are already loaded
+    if len(vector_db.documents) > 0:
+        st.sidebar.info(f"📚 {len(vector_db.get_all_gear())} manuals already loaded")
+        return
+    
+    # Manual mappings - filename to gear name
+    manual_mappings = {
+        "Analog-Four-MKII-User-Manual_ENG_OS1.51C_220204-1.pdf": "Elektron Analog Four MKII",
+        "Analog-Heat-MKII-User-Manual_ENG_OS1.21C_220202.pdf": "Elektron Analog Heat MKII",
+        "Analog-Rytm-MKII-User-Manual_ENG_OS1.72_250130.pdf": "Elektron Analog Rytm MKII", 
+        "Digitakt-2-User-Manual_ENG_OS1.10A_250415.pdf": "Elektron Digitakt II",
+        "Digitone-2-User-Manual_ENG_OS1.10A_250415.pdf": "Elektron Digitone II",
+        "Manuale-Elektron-Octatrack-MKII.pdf": "Elektron Octatrack MKII",
+        "Syntakt-User-Manual_ENG_OS1.30B_250129.pdf": "Elektron Syntakt"
+    }
+    
+    manuals_dir = "./manuals"
+    
+    if not os.path.exists(manuals_dir):
+        st.sidebar.warning("📂 No manuals folder found.")
+        return
+    
+    loaded_count = 0
+    failed_count = 0
+    
+    # Show loading progress
+    progress_placeholder = st.sidebar.empty()
+    
+    for filename, gear_name in manual_mappings.items():
+        file_path = os.path.join(manuals_dir, filename)
+        
+        if os.path.exists(file_path):
+            progress_placeholder.text(f"⏳ Loading {gear_name}...")
+            
+            try:
+                with open(file_path, 'rb') as f:
+                    text = extract_text_from_pdf(f)
+                    
+                if len(text.strip()) > 100:
+                    success = add_manual_to_db(vector_db, text, gear_name)
+                    if success:
+                        loaded_count += 1
+                        st.sidebar.success(f"✅ Loaded {gear_name}")
+                    else:
+                        failed_count += 1
+                        st.sidebar.error(f"❌ Failed to process {gear_name}")
+                else:
+                    failed_count += 1
+                    st.sidebar.error(f"❌ {gear_name} appears empty")
+                    
+            except Exception as e:
+                failed_count += 1
+                st.sidebar.error(f"❌ Error loading {gear_name}: {str(e)}")
+    
+    # Clear progress and show summary
+    progress_placeholder.empty()
+    
+    if loaded_count > 0:
+        st.sidebar.success(f"🎉 Preloaded {loaded_count} Elektron manuals!")
+    
+    if failed_count > 0:
+        st.sidebar.warning(f"⚠️ {failed_count} manuals failed to load")
 
 def generate_answer(context_chunks, question):
     """Generate answer using OpenAI"""
@@ -367,7 +531,7 @@ Query: {question}"""
 
     try:
         response = openai.chat.completions.create(
-            model="gpt-4o-mini",  # Fixed: using reliable model name
+            model="gpt-4.1-nano",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -383,15 +547,15 @@ def main():
     st.set_page_config(
         page_title="Music Gear Chat",
         page_icon="🎵",
-        layout="wide",  # Use wide layout
+        layout="wide",
         initial_sidebar_state="expanded"
     )
     
-    load_custom_css()  # Load the custom CSS
+    load_custom_css()
     
     st.title("🎵 Music Gear Chat")
     st.markdown("#### *Chat with your music equipment manuals in a modern interface*")
-    st.markdown("---")  # Adding a horizontal rule for separation
+    st.markdown("---")
     
     # Check API key
     if not os.getenv("OPENAI_API_KEY"):
@@ -400,13 +564,15 @@ def main():
         return
     
     # Initialize components
-    collection = init_components()
-    preload_elektron_manuals(collection)
+    vector_db = init_components()
+    
+    # Preload Elektron manuals
+    preload_elektron_manuals(vector_db)
     
     # Sidebar for manual management
     st.sidebar.header("📚 Manual Management")
     
-    with st.sidebar.container():  # Group sidebar elements
+    with st.sidebar.container():
         # Upload new manual
         uploaded_file = st.sidebar.file_uploader("Upload a manual (PDF)", type=['pdf'])
         gear_name = st.sidebar.text_input("Gear name (e.g., 'Octatrack MK2')", key="gear_name_input")
@@ -416,15 +582,15 @@ def main():
                 with st.spinner("Processing manual..."):
                     try:
                         text = extract_text_from_pdf(uploaded_file)
-                        if len(text.strip()) < 100:  # Basic check for empty/unreadable PDF
-                            st.sidebar.error("PDF appears to be empty or unreadable.")
-                        else:
-                            success = add_manual_to_db(collection, text, gear_name)
+                        if len(text.strip()) > 100:
+                            success = add_manual_to_db(vector_db, text, gear_name)
                             if success:
                                 st.sidebar.success(f"✅ Added {gear_name} manual!")
                                 st.rerun()
                             else:
-                                st.sidebar.error("Failed to add manual. Check console for errors.")
+                                st.sidebar.error("Failed to add manual.")
+                        else:
+                            st.sidebar.error("PDF appears to be empty or unreadable.")
                     except Exception as e:
                         st.sidebar.error(f"Error processing PDF: {str(e)}")
     
@@ -432,12 +598,11 @@ def main():
     
     # List available gear
     try:
-        all_results = collection.get()
-        available_gear = sorted(list(set([meta["gear"] for meta in all_results["metadatas"]]))) if all_results["metadatas"] else []
+        available_gear = vector_db.get_all_gear()
         
         if available_gear:
             st.sidebar.subheader("⚙️ Available Gear:")
-            for gear in available_gear:
+            for gear in sorted(available_gear):
                 st.sidebar.write(f"• {gear}")
         else:
             st.sidebar.write("No manuals uploaded yet.")
@@ -450,19 +615,15 @@ def main():
     if available_gear:
         st.sidebar.markdown("---")
         st.sidebar.subheader("📊 Stats")
-        try:
-            total_chunks = len(collection.get()["documents"])
-            st.sidebar.write(f"Total manual sections: {total_chunks}")
-        except:
-            pass  # Gracefully handle if stats can't be fetched
+        st.sidebar.write(f"Total manual sections: {len(vector_db.documents)}")
     
-    # Main chat interface - using columns for better layout
-    col1, col2 = st.columns([0.7, 0.3])  # Main content | Potential future use or spacing
+    # Main chat interface
+    col1, col2 = st.columns([0.7, 0.3])
     
     with col1:
         st.header("💬 Ask about your gear")
         
-        with st.container():  # Grouping input elements
+        with st.container():
             gear_options = ["All gear"] + available_gear
             gear_filter = st.selectbox(
                 "Filter by gear (optional):",
@@ -485,15 +646,12 @@ def main():
         if ask_button_pressed:
             if not question:
                 st.warning("Please enter a question!")
-            elif not os.getenv("OPENAI_API_KEY"):
-                # This check is also at the top, but good to have near action
-                st.error("⚠️ OpenAI API key not configured. Please set it up.")
-            elif not available_gear and not gear_filter:  # if no gear uploaded and not asking about "all gear" (which is None)
+            elif not available_gear:
                 st.warning("Please upload at least one manual before asking questions.")
             else:
                 with st.spinner("Searching manuals and crafting your answer..."):
                     try:
-                        results = search_manual(collection, question, gear_filter)
+                        results = search_manual(vector_db, question, gear_filter)
                         
                         if not results or not results["documents"] or not results["documents"][0]:
                             st.warning("No relevant information found. Try uploading the manual for your gear or rephrasing your question!")
@@ -515,12 +673,12 @@ def main():
 """
                                         st.markdown(f"<div class='card'>{source_card_content}</div>", unsafe_allow_html=True)
                                         if i < len(context_chunks) - 1:
-                                            st.markdown("---")  # Separator between chunks
+                                            st.markdown("---")
                     except Exception as e:
                         st.error(f"An error occurred: {str(e)}")
     
     # Tips section
-    with col1:  # Or move to col2 if you want it sidebar-like
+    with col1:
         st.markdown("---")
         with st.expander("💡 Tips for better results", expanded=False):
             st.write("""
@@ -531,64 +689,5 @@ def main():
 - **Check your manual**: Make sure you've uploaded the correct and readable manual for the gear you're asking about.
 """)
 
-# --- Preload Downloaded Manuals ---
-def preload_elektron_manuals(collection):
-    """Checks for PDFs in the 'manuals' folder and adds them to ChromaDB if not already present."""
-    manuals_dir = "./manuals/"
-    if not os.path.exists(manuals_dir):
-        print(f"Manuals directory '{manuals_dir}' not found. Skipping preload.")
-        return
-
-    pdf_files = glob.glob(os.path.join(manuals_dir, "*.pdf"))
-    if not pdf_files:
-        print(f"No PDF files found in '{manuals_dir}'. Skipping preload.")
-        return
-
-    st.sidebar.subheader("Preloading Manuals...")
-    progress_bar = st.sidebar.progress(0)
-    
-    # Get existing gear names from the collection to avoid duplicates
-    try:
-        existing_gear_in_db = set()
-        all_docs = collection.get(include=['metadatas'])
-        if all_docs and all_docs["metadatas"]:
-            existing_gear_in_db = set([meta["gear"] for meta in all_docs["metadatas"] if meta and "gear" in meta])
-    except Exception as e:
-        print(f"Error fetching existing gear from DB: {e}. Proceeding with caution for duplicates.")
-        existing_gear_in_db = set()
-
-    for i, pdf_path in enumerate(pdf_files):
-        # Derive gear_name from filename, e.g., "./manuals/elektron_digitakt.pdf" -> "elektron_digitakt"
-        gear_name_from_file = os.path.splitext(os.path.basename(pdf_path))[0]
-        
-        if gear_name_from_file in existing_gear_in_db:
-            print(f"Manual for '{gear_name_from_file}' already in database. Skipping.")
-            progress_bar.progress((i + 1) / len(pdf_files))
-            continue
-        
-        st.sidebar.write(f"Processing: {gear_name_from_file}...")
-        try:
-            with open(pdf_path, "rb") as f:
-                text = extract_text_from_pdf(f)
-            if len(text.strip()) < 100:
-                st.sidebar.warning(f"PDF '{gear_name_from_file}' seems empty or unreadable.")
-            else:
-                success = add_manual_to_db(collection, text, gear_name_from_file)
-                if success:
-                    st.sidebar.write(f"✅ Added '{gear_name_from_file}' to DB.")
-                    existing_gear_in_db.add(gear_name_from_file) # Add to set to prevent re-add if multiple files map to same name
-                else:
-                    st.sidebar.warning(f"Failed to add '{gear_name_from_file}' to DB.")
-        except Exception as e:
-            st.sidebar.error(f"Error processing '{gear_name_from_file}': {str(e)}")
-        finally:
-            progress_bar.progress((i + 1) / len(pdf_files))
-    
-    st.sidebar.write("Manual preloading complete.")
-    progress_bar.empty() # Remove progress bar
-    # We might need a rerun here if this is the first time manuals are added and the main UI needs to update
-    # However, since this is called before the main gear list is populated, it should be okay.
-
 if __name__ == "__main__":
     main()
-    
