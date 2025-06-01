@@ -427,6 +427,119 @@ def preload_elektron_manuals(vector_db):
     if failed_count > 0:
         st.sidebar.warning(f"⚠️ {failed_count} manuals failed to load")
 
+# Search suggestions based on gear and common queries
+SEARCH_SUGGESTIONS = {
+    "general": [
+        "How to save patterns",
+        "MIDI sync setup",
+        "How to load samples",
+        "Pattern chain setup",
+        "Audio routing configuration"
+    ],
+    "Elektron Octatrack MKII": [
+        "How to slice samples on Octatrack",
+        "Octatrack crossfader setup",
+        "How to record live audio",
+        "Scene management workflow",
+        "Octatrack MIDI sequencing"
+    ],
+    "Elektron Digitakt II": [
+        "Digitakt sampling workflow",
+        "How to use parameter locks",
+        "Sample editing techniques",
+        "Live recording patterns",
+        "Song mode arrangement"
+    ],
+    "Elektron Digitone II": [
+        "FM synthesis basics on Digitone",
+        "How to program arpeggios",
+        "Sound design techniques",
+        "Multi-timbral setup",
+        "Performance mode tips"
+    ],
+    "Elektron Analog Rytm MKII": [
+        "Analog Rytm drum synthesis",
+        "How to layer samples with synthesis",
+        "Performance pad setup",
+        "Individual outputs routing",
+        "Sound pool management"
+    ],
+    "Elektron Syntakt": [
+        "Syntakt machine types explained",
+        "Analog vs digital machines",
+        "How to create fills",
+        "Sound lock techniques",
+        "Performance effects"
+    ]
+}
+
+def get_search_suggestions(selected_gear=None):
+    """Get relevant search suggestions based on selected gear"""
+    if selected_gear and selected_gear in SEARCH_SUGGESTIONS:
+        return SEARCH_SUGGESTIONS[selected_gear]
+    return SEARCH_SUGGESTIONS["general"]
+
+def detect_comparison_query(question):
+    """Detect if user is asking for gear comparison"""
+    comparison_keywords = [
+        "vs", "versus", "compare", "comparison", "difference", "better",
+        "which should I", "should I upgrade", "or", "between"
+    ]
+    return any(keyword in question.lower() for keyword in comparison_keywords)
+
+def generate_comparison_answer(vector_db, question, available_gear):
+    """Generate gear comparison answer"""
+    # Search across all gear for comparison
+    all_results = search_manual(vector_db, question, gear_filter=None, n_results=6)
+    
+    if not all_results or not all_results["documents"][0]:
+        return None
+    
+    # Group results by gear
+    gear_info = {}
+    for i, chunk in enumerate(all_results["documents"][0]):
+        if i < len(all_results["metadatas"][0]):
+            gear = all_results["metadatas"][0][i]["gear"]
+            if gear not in gear_info:
+                gear_info[gear] = []
+            gear_info[gear].append(chunk)
+    
+    # Build comparison context
+    comparison_context = ""
+    for gear, chunks in gear_info.items():
+        comparison_context += f"\n\n=== {gear} ===\n"
+        comparison_context += "\n".join(chunks[:2])  # Limit chunks per gear
+    
+    # Enhanced system prompt for comparisons
+    comparison_prompt = f"""You are a music gear expert providing detailed comparisons. Based on the manual excerpts below, provide a comprehensive comparison that helps the user make an informed decision.
+
+Manual excerpts:
+{comparison_context}
+
+Question: {question}
+
+Provide a structured comparison that includes:
+- Key differences between the devices
+- Strengths and use cases for each
+- Which device suits different types of users/workflows
+- Practical recommendations
+
+Format your answer with clear sections and direct, actionable advice."""
+
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful music gear expert specializing in detailed product comparisons and recommendations."},
+                {"role": "user", "content": comparison_prompt}
+            ],
+            max_tokens=800,
+            temperature=0.7
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error generating comparison: {str(e)}"
+
 def generate_answer(context_chunks, question):
     """Generate answer using OpenAI"""
     context = "\n\n".join(context_chunks)
@@ -569,7 +682,7 @@ Query: {question}"""
 
     try:
         response = openai.chat.completions.create(
-            model="gpt-4.1-nano",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -583,7 +696,7 @@ Query: {question}"""
 
 def main():
     st.set_page_config(
-        page_title="Music GigaChadGPT",
+        page_title="Manual GPT - Chat with your Manuals",
         page_icon="🎵",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -591,8 +704,8 @@ def main():
     
     load_custom_css()
     
-    st.title("🎵 Music Gear ChadGPT")
-    st.markdown("#### *Chat with your gear's manual, right here, right now:*")
+    st.title("Gigachad Manual GPT")
+    st.markdown("#### *Chat with your Hardware manual's manual*")
     st.markdown("---")
     
     # Check API key
@@ -672,11 +785,23 @@ def main():
             if gear_filter == "All gear":
                 gear_filter = None
             
+            # Smart search suggestions
+            st.markdown("**💡 Quick suggestions:**")
+            suggestions = get_search_suggestions(gear_filter)
+            
+            # Create suggestion buttons in rows of 2
+            suggestion_cols = st.columns(2)
+            for i, suggestion in enumerate(suggestions[:4]):  # Show top 4 suggestions
+                with suggestion_cols[i % 2]:
+                    if st.button(suggestion, key=f"suggestion_{i}", help=f"Click to ask: {suggestion}"):
+                        st.session_state.question_text_area = suggestion
+            
             question = st.text_area(
                 "What do you want to know?",
-                placeholder="e.g., How do I set up the Octatrack to the Digitakt?",
+                placeholder="e.g., How do I set up the arpeggiator on my synth? Or: Compare Digitakt vs Digitone",
                 height=150,
-                key="question_text_area"
+                key="question_text_area",
+                value=st.session_state.get("question_text_area", "")
             )
             
             ask_button_pressed = st.button("Ask", type="primary", key="ask_button_main")
@@ -689,29 +814,64 @@ def main():
             else:
                 with st.spinner("Searching manuals and crafting your answer..."):
                     try:
-                        results = search_manual(vector_db, question, gear_filter)
+                        # Check if this is a comparison question
+                        is_comparison = detect_comparison_query(question)
                         
-                        if not results or not results["documents"] or not results["documents"][0]:
-                            st.warning("No relevant information found. Try uploading the manual for your gear or rephrasing your question!")
-                        else:
-                            context_chunks = results["documents"][0]
-                            answer = generate_answer(context_chunks, question)
-                            
+                        if is_comparison and len(available_gear) > 1:
+                            # Generate comparison answer
                             st.markdown("---")
-                            st.subheader("💡 Answer:")
-                            st.markdown(f"<div class='card'>{answer}</div>", unsafe_allow_html=True)
+                            st.subheader("⚖️ Gear Comparison:")
                             
-                            with st.expander("📖 Show source excerpts from manuals", expanded=False):
-                                for i, chunk in enumerate(context_chunks):
-                                    if i < len(results["metadatas"][0]):
-                                        gear = results["metadatas"][0][i]["gear"]
-                                        source_card_content = f"""
+                            comparison_answer = generate_comparison_answer(vector_db, question, available_gear)
+                            if comparison_answer:
+                                st.markdown(f"<div class='card'>{comparison_answer}</div>", unsafe_allow_html=True)
+                                
+                                # Also show individual results for reference
+                                with st.expander("📖 Detailed manual excerpts", expanded=False):
+                                    results = search_manual(vector_db, question, None, n_results=6)
+                                    if results and results["documents"][0]:
+                                        gear_sections = {}
+                                        for i, chunk in enumerate(results["documents"][0]):
+                                            if i < len(results["metadatas"][0]):
+                                                gear = results["metadatas"][0][i]["gear"]
+                                                if gear not in gear_sections:
+                                                    gear_sections[gear] = []
+                                                gear_sections[gear].append(chunk)
+                                        
+                                        for gear, chunks in gear_sections.items():
+                                            st.write(f"**{gear}:**")
+                                            for chunk in chunks[:2]:  # Limit to 2 chunks per gear
+                                                st.write(f"{chunk[:300]}...")
+                                            st.write("---")
+                            else:
+                                st.warning("Could not generate comparison. Try a more specific comparison question.")
+                        
+                        else:
+                            # Regular search for non-comparison questions
+                            results = search_manual(vector_db, question, gear_filter)
+                            
+                            if not results or not results["documents"] or not results["documents"][0]:
+                                st.warning("No relevant information found. Try uploading the manual for your gear or rephrasing your question!")
+                            else:
+                                context_chunks = results["documents"][0]
+                                answer = generate_answer(context_chunks, question)
+                                
+                                st.markdown("---")
+                                st.subheader("💡 Answer:")
+                                st.markdown(f"<div class='card'>{answer}</div>", unsafe_allow_html=True)
+                                
+                                with st.expander("📖 Show source excerpts from manuals", expanded=False):
+                                    for i, chunk in enumerate(context_chunks):
+                                        if i < len(results["metadatas"][0]):
+                                            gear = results["metadatas"][0][i]["gear"]
+                                            source_card_content = f"""
 <p style="font-size: 0.9em; color: #555;">From <strong>{gear}</strong> manual (excerpt):</p>
 <p style="font-size: 0.95em;">{chunk[:400] + "..." if len(chunk) > 400 else chunk}</p>
 """
-                                        st.markdown(f"<div class='card'>{source_card_content}</div>", unsafe_allow_html=True)
-                                        if i < len(context_chunks) - 1:
-                                            st.markdown("---")
+                                            st.markdown(f"<div class='card'>{source_card_content}</div>", unsafe_allow_html=True)
+                                            if i < len(context_chunks) - 1:
+                                                st.markdown("---")
+                                
                     except Exception as e:
                         st.error(f"An error occurred: {str(e)}")
     
