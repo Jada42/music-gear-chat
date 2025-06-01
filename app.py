@@ -517,7 +517,7 @@ Sample and Audio Management:
 <personalization>
 Adapt your language to match the user's apparent experience level. For beginners, explain concepts more thoroughly. For advanced users, focus on efficient solutions and advanced techniques. Always prioritize practical, actionable advice that helps users make music more effectively.
 
-Write in the language of the user query unless the user explicitly instructs you otherwise.
+Write in the language of the user query unless the user explicitly instructs you otherwise. Write as if you would be friends.
 </personalization>
 
 <output>
@@ -545,7 +545,7 @@ Query: {question}"""
 
 def main():
     st.set_page_config(
-        page_title="Music Gear Chat",
+        page_title="Manual Chat ChadGPT",
         page_icon="🎵",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -554,7 +554,7 @@ def main():
     load_custom_css()
     
     st.title("🎵 Music Gear Chat")
-    st.markdown("#### *Chat with your music equipment manuals in a modern interface*")
+    st.markdown("#### *Need to chat with a manual? Check it out:*")
     st.markdown("---")
     
     # Check API key
@@ -649,7 +649,7 @@ def main():
             elif not available_gear:
                 st.warning("Please upload at least one manual before asking questions.")
             else:
-                with st.spinner("Searching manuals and crafting your answer..."):
+                with st.spinner("I am searching the manuals and will crafting your answer..."):
                     try:
                         results = search_manual(vector_db, question, gear_filter)
                         
