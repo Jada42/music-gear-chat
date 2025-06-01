@@ -377,7 +377,8 @@ def preload_elektron_manuals(vector_db):
         "Digitakt-2-User-Manual_ENG_OS1.10A_250415.pdf": "Elektron Digitakt II",
         "Digitone-2-User-Manual_ENG_OS1.10A_250415.pdf": "Elektron Digitone II",
         "Manuale-Elektron-Octatrack-MKII.pdf": "Elektron Octatrack MKII",
-        "Syntakt-User-Manual_ENG_OS1.30B_250129.pdf": "Elektron Syntakt"
+        "Syntakt-User-Manual_ENG_OS1.30B_250129.pdf": "Elektron Syntakt",
+        "Overbridge-User-Manual_250415.pdf": "Elektron Overbridge"
     }
     
     manuals_dir = "./manuals"
@@ -470,6 +471,13 @@ SEARCH_SUGGESTIONS = {
         "How to create fills",
         "Sound lock techniques",
         "Performance effects"
+    ],
+    "Elektron Overbridge": [
+        "How to install Overbridge",
+        "DAW integration setup",
+        "Audio routing in Overbridge",
+        "MIDI sync with Overbridge",
+        "Troubleshooting Overbridge connection"
     ]
 }
 
@@ -696,7 +704,7 @@ Query: {question}"""
 
 def main():
     st.set_page_config(
-        page_title="Manual GPT - Chat with your Manuals",
+        page_title="Your GPT for your Gear",
         page_icon="🎵",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -704,8 +712,8 @@ def main():
     
     load_custom_css()
     
-    st.title("Gigachad Manual GPT")
-    st.markdown("#### *Chat with your Hardware manual's manual*")
+    st.title("🎵 Manual ChatGPT")
+    st.markdown("#### *Chat with your gear!*")
     st.markdown("---")
     
     # Check API key
@@ -798,7 +806,7 @@ def main():
             
             question = st.text_area(
                 "What do you want to know?",
-                placeholder="e.g., How do I set up the arpeggiator on my synth? Or: Compare Digitakt vs Digitone",
+                placeholder="e.g., How do I record samples on my Octatrack? Or: Compare Digitakt vs Digitone",
                 height=150,
                 key="question_text_area",
                 value=st.session_state.get("question_text_area", "")
@@ -880,11 +888,35 @@ def main():
         st.markdown("---")
         with st.expander("💡 Tips for better results", expanded=False):
             st.write("""
+- **Use quick suggestions**: Click the suggestion buttons above for instant queries
+- **Try comparisons**: Ask "Compare Digitakt vs Digitone" or "Which is better for X?"
 - **Be specific**: Instead of "how does this work?" ask "how do I set up MIDI sync?"
 - **Use gear terminology**: Ask about "patterns", "banks", "filters", etc.
-- **Try different phrasings**: If you don't get good results, rephrase your question.
-- **Select specific gear**: If you know which manual to search, use the filter for faster and more relevant results.
-- **Check your manual**: Make sure you've uploaded the correct and readable manual for the gear you're asking about.
+- **Try different phrasings**: If you don't get good results, rephrase your question
+- **Select specific gear**: If you know which manual to search, use the filter for faster results
+- **Ask workflow questions**: "How to set up for live performance?" or "Best workflow for recording?"
+""")
+        
+        # Show comparison examples
+        with st.expander("⚖️ Comparison Examples", expanded=False):
+            st.write("""
+**Try these comparison questions:**
+- "Compare Octatrack vs Digitakt for live performance"
+- "Digitone vs Analog Four for bass sounds"
+- "Should I upgrade from MK1 to MK2?"
+- "Which Elektron device is best for beginners?"
+- "Analog Rytm vs sample-based drums"
+""")
+        
+        # Show workflow examples  
+        with st.expander("🎵 Workflow Examples", expanded=False):
+            st.write("""
+**Try these workflow questions:**
+- "How to connect Octatrack to Digitone?"
+- "Live performance setup with multiple devices"
+- "Recording workflow from hardware to DAW"
+- "MIDI chain setup for sequencing multiple devices"
+- "Sample organization best practices"
 """)
 
 if __name__ == "__main__":
