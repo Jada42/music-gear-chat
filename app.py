@@ -21,9 +21,36 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 def load_custom_css():
     st.markdown("""
     <style>
-    /* General App Styling */
+    /* Force Light Mode Only */
     .stApp {
-        background-color: #F0F2F6; /* Light gray background */
+        background-color: #F0F2F6 !important; /* Light gray background */
+        color: #1E1E1E !important; /* Dark text */
+    }
+    
+    /* Override dark mode if user has it enabled */
+    .stApp[data-theme="dark"] {
+        background-color: #F0F2F6 !important;
+        color: #1E1E1E !important;
+    }
+    
+    /* Force all text to be dark */
+    .stApp * {
+        color: #1E1E1E !important;
+    }
+    
+    /* Ensure sidebar stays light */
+    .stSidebar {
+        background-color: #FFFFFF !important;
+        color: #1E1E1E !important;
+    }
+    
+    /* Override any dark mode elements */
+    .stSelectbox > div > div,
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea {
+        background-color: #FFFFFF !important;
+        color: #1E1E1E !important;
+        border-color: #D1D1D6 !important;
     }
     
     /* Main content area */
@@ -128,8 +155,19 @@ def load_custom_css():
         color: #007AFF;
     }
     
-    .stSidebar .stsubheader {
-        color: #333333;
+    /* Hide the theme toggle button */
+    .stApp header[data-testid="stHeader"] {
+        display: none !important;
+    }
+    
+    /* Hide settings menu that contains theme toggle */
+    button[title="Settings"] {
+        display: none !important;
+    }
+    
+    /* Alternative: Hide just the theme toggle in settings */
+    .stApp div[data-testid="stSidebar"] button[aria-label*="theme"] {
+        display: none !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -517,7 +555,7 @@ Sample and Audio Management:
 <personalization>
 Adapt your language to match the user's apparent experience level. For beginners, explain concepts more thoroughly. For advanced users, focus on efficient solutions and advanced techniques. Always prioritize practical, actionable advice that helps users make music more effectively.
 
-Write in the language of the user query unless the user explicitly instructs you otherwise. Write as if you would be friends.
+Write in the language of the user query unless the user explicitly instructs you otherwise.
 </personalization>
 
 <output>
@@ -545,7 +583,7 @@ Query: {question}"""
 
 def main():
     st.set_page_config(
-        page_title="Manual Chat ChadGPT",
+        page_title="Music GigaChadGPT",
         page_icon="🎵",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -553,8 +591,8 @@ def main():
     
     load_custom_css()
     
-    st.title("🎵 Music Gear Chat")
-    st.markdown("#### *Need to chat with a manual? Check it out:*")
+    st.title("🎵 Music Gear ChadGPT")
+    st.markdown("#### *Chat with your gear's manual, right here, right now:*")
     st.markdown("---")
     
     # Check API key
@@ -636,7 +674,7 @@ def main():
             
             question = st.text_area(
                 "What do you want to know?",
-                placeholder="e.g., How do I set up the arpeggiator on my synth?",
+                placeholder="e.g., How do I set up the Octatrack to the Digitakt?",
                 height=150,
                 key="question_text_area"
             )
@@ -649,7 +687,7 @@ def main():
             elif not available_gear:
                 st.warning("Please upload at least one manual before asking questions.")
             else:
-                with st.spinner("I am searching the manuals and will crafting your answer..."):
+                with st.spinner("Searching manuals and crafting your answer..."):
                     try:
                         results = search_manual(vector_db, question, gear_filter)
                         
