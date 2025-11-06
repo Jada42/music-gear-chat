@@ -536,13 +536,13 @@ Format your answer with clear sections and direct, actionable advice."""
 
     try:
         response = openai.chat.completions.create(
-            model="gpt-5-nano",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a helpful music gear expert specializing in detailed product comparisons and recommendations."},
                 {"role": "user", "content": comparison_prompt}
             ],
-            max_completion_tokens=800,
-            temperature=1
+            max_tokens=800,
+            temperature=0.7
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -696,7 +696,7 @@ Query: {question}"""
                 {"role": "user", "content": user_prompt}
             ],
             max_completion_tokens=500,
-            temperature=1
+            temperature=0.7
         )
         return response.choices[0].message.content
     except Exception as e:
