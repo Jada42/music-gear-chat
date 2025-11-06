@@ -542,7 +542,7 @@ Format your answer with clear sections and direct, actionable advice."""
                 {"role": "user", "content": comparison_prompt}
             ],
             max_completion_tokens=800,
-            temperature="default"
+            temperature=1
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -696,7 +696,7 @@ Query: {question}"""
                 {"role": "user", "content": user_prompt}
             ],
             max_completion_tokens=500,
-            temperature="default"
+            temperature=1
         )
         return response.choices[0].message.content
     except Exception as e:
