@@ -541,7 +541,7 @@ Format your answer with clear sections and direct, actionable advice."""
                 {"role": "system", "content": "You are a helpful music gear expert specializing in detailed product comparisons and recommendations."},
                 {"role": "user", "content": comparison_prompt}
             ],
-            max_tokens=800,
+            max_completion_tokens=800,
             temperature=0.7
         )
         return response.choices[0].message.content
@@ -695,7 +695,7 @@ Query: {question}"""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            max_tokens=500,
+            max_completion_tokens=500,
             temperature=0.7
         )
         return response.choices[0].message.content
