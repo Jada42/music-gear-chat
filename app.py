@@ -696,7 +696,7 @@ Query: {question}"""
                 {"role": "user", "content": user_prompt}
             ],
             max_completion_tokens=500,
-            temperature=0.7
+            temperature=1.0
         )
         return response.choices[0].message.content
     except Exception as e:
