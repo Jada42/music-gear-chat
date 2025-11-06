@@ -298,18 +298,51 @@ def extract_text_from_pdf(pdf_file):
         text += page.extract_text() + "\n"
     return text
 
-def chunk_text(text, chunk_size=1000, overlap=200):
-    """Split text into overlapping chunks"""
+import re
+
+def chunk_text(text, max_size=1200, overlap=200):
+    """
+    NEW CHUNKING UPDATE NOV 06.2025! Added an semantic chunker for the Elektron manuals:
+    - Splits on headings / uppercase section titles (should be better for multi-step midi stuff or outliers)
+    - Preserves multi-page workflows
+    
+    """
+
+    # Split on typical Elektron section patterns
+    parts = re.split(
+        r"(?=\n[A-Z][A-Za-z0-9\s\-/()]{4,}\n)",  # SECTION HEADERS
+        text
+    )
+
     chunks = []
-    start = 0
-    while start < len(text):
-        end = start + chunk_size
-        chunk = text[start:end]
-        chunks.append(chunk)
-        start = end - overlap
-        if start >= len(text):
-            break
-    return chunks
+    current = ""
+
+    for part in parts:
+        # If adding this section stays under limit → keep growing chunk
+        if len(current) + len(part) < max_size:
+            current += part
+        else:
+            # Store previous chunk
+            if current.strip():
+                chunks.append(current.strip())
+            # Start new one
+            current = part
+
+    # final chunk
+    if current.strip():
+        chunks.append(current.strip())
+
+    # Add overlap for search recall
+    final_chunks = []
+    for i, c in enumerate(chunks):
+        if i == 0:
+            final_chunks.append(c)
+        else:
+            prev = chunks[i - 1]
+            overlap_snip = prev[-overlap:]
+            final_chunks.append(overlap_snip + c)
+
+    return final_chunks
 
 def create_embeddings(texts: List[str]):
     """Create embeddings using OpenAI"""
