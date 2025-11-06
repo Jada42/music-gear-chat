@@ -536,7 +536,7 @@ Format your answer with clear sections and direct, actionable advice."""
 
     try:
         response = openai.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5-nano",
             messages=[
                 {"role": "system", "content": "You are a helpful music gear expert specializing in detailed product comparisons and recommendations."},
                 {"role": "user", "content": comparison_prompt}
@@ -690,7 +690,7 @@ Query: {question}"""
 
     try:
         response = openai.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
