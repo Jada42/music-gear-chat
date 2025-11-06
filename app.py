@@ -695,7 +695,7 @@ Query: {question}"""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            max_completion_tokens=500,
+            max_tokens=500,
             temperature=1.0
         )
         return response.choices[0].message.content
