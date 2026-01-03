@@ -520,55 +520,77 @@ def get_search_suggestions(selected_gear=None):
         return SEARCH_SUGGESTIONS[selected_gear]
     return SEARCH_SUGGESTIONS["general"]
 
-def detect_comparison_query(question):
-    """Detect if user is asking for gear comparison"""
+import re
+
+def detect_comparison_query(question, known_entities=None):
+    """
+    Detects if a user is asking for a comparison between two items.
+    
+    Args:
+        question (str): The user's question.
+        known_entities (list): Optional list of known product names (lowercase).
+                               If None, uses a default list.
+    """
     question_lower = question.lower()
     
-    # Strong comparison indicators
-    strong_indicators = [
-        "vs", "versus", " vs. ", 
-        "compare", "comparison", 
-        "difference between",
-        "better than",
-        "which should i get",
-        "should i upgrade",
-        "which one should",
-        "or the"  # "digitakt or the digitone"
+    # 1. defaults 
+    if known_entities is None:
+        known_entities = ["digitakt", "digitone", "octatrack", "rytm", "syntakt", 
+                          "analog", "mkii", "heat", "overbridge", "mk2"]
+
+    # 2. Direct Structural Indicators (Regex)
+    # We look for specific patterns: "vs", "versus", "better than", "difference"
+    # Using regex \b ensures we match "vs" but not "vector"
+    strong_patterns = [
+        r'\bvs\b',          # matches "vs", "vs.", "vs,"
+        r'\bversus\b',
+        r'\bbetter than\b',
+        r'\bdiff(?:erence)?\sbetween\b', # matches "diff between" or "difference between"
+        r'\bcompare\b'
     ]
     
-    # Check for strong indicators first
-    if any(indicator in question_lower for indicator in strong_indicators):
+    if any(re.search(pattern, question_lower) for pattern in strong_patterns):
         return True
-    
-    # Check for "or" but with more context to avoid false positives
-    # Only trigger if "or" appears with gear names or between two noun phrases
+
+    # 3. "Or" Logic (Multi-option handling)
+    # Instead of simple split, we look for "X or Y"
     if " or " in question_lower:
-        # Split on "or" and check if both sides look like gear names/options
         parts = question_lower.split(" or ")
-        if len(parts) == 2:
-            # Check if both parts contain common gear-related words
-            gear_words = ["digitakt", "digitone", "octatrack", "rytm", "syntakt", 
-                         "analog", "mk", "mkii", "heat", "overbridge"]
-            left_has_gear = any(word in parts[0] for word in gear_words)
-            right_has_gear = any(word in parts[1] for word in gear_words)
+        
+        # We check every pair of items split by "or"
+        # e.g. "A or B or C" checks (A,B) and (B,C)
+        for i in range(len(parts) - 1):
+            left_part = parts[i]
+            right_part = parts[i+1]
             
-            if left_has_gear and right_has_gear:
+            # Check if both parts contain a known entity
+            # We allow 'fuzzy' matching (substring) to handle "Digitakt" vs "Digitakt MKII"
+            left_has_entity = any(entity in left_part for entity in known_entities)
+            right_has_entity = any(entity in right_part for entity in known_entities)
+            
+            if left_has_entity and right_has_entity:
                 return True
-    
-    # Check for "which" questions that compare options
-    if "which" in question_lower:
-        if any(phrase in question_lower for phrase in [
-            "which is better",
-            "which one is",
-            "which should i",
-            "which would you"
-        ]):
-            # Still need to verify it's comparing multiple things
-            gear_words = ["digitakt", "digitone", "octatrack", "rytm", "syntakt"]
-            gear_count = sum(1 for word in gear_words if word in question_lower)
-            if gear_count >= 2:
-                return True
-    
+
+    # 4. "Which" Preference Logic
+    # Looks for "which is better" or "which should i get"
+    if re.search(r'\bwhich\b.*(better|choose|prefer|get|buy)', question_lower):
+        # Relaxes the constraint: If we find a "which" phrase, do we see at least TWO distinct entities? 
+        # This fixes the issue where "Which is better, the A or the B?" might not be caught by keyword count
+        # because "better" is a strong signal.
+        
+        # This countss how many known entities appear in the question
+        found_entities = [ent for ent in known_entities if ent in question_lower]
+        
+        # If we found 2+ specific items (e.g. Digitakt AND Digitone), it's definitely a comparison.
+        if len(found_entities) >= 2:
+            return True
+            
+        # If we only found 1 or 0 items, BUT the phrasing is explicitly comparative...
+        # You might want to return True anyway (letting the RAG system handle the retrieval),
+        # or keep it False. Here, we require at least one gear mention to assume it's a gear query.
+        if len(found_entities) >= 1:
+            return True
+
     return False
 
 def generate_comparison_answer(vector_db, question, available_gear):
