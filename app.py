@@ -526,6 +526,25 @@ def preload_elektron_manuals(vector_db):
     if failed_count > 0:
         st.sidebar.warning(f"⚠️ {failed_count} manuals failed to load")
 
+# specific facts to prevent hallucinations (Negative Knowledge) (e.g. octatrack 2 having overbridge support)
+KNOWN_FACTS = {
+    "Elektron Octatrack MKII": [
+        "DOES NOT support Overbridge.",
+        "Does NOT have a built-in USB audio interface (USB is for file transfer only).",
+        "Uses Compact Flash (CF) cards for storage."
+    ],
+    "Elektron Digitakt II": [
+        "Supports Overbridge.",
+        "Has 16 tracks (can be audio or MIDI).",
+        "Stereo sampling supported."
+    ],
+     "Elektron Digitakt": [ # Original MK1
+        "Supports Overbridge.",
+        "Mono sampling only (internal engine)."
+    ],
+    # extendable
+}
+
 # Search suggestions based on gear and common queries
 SEARCH_SUGGESTIONS = {
     "general": [
@@ -680,19 +699,37 @@ def generate_comparison_answer(vector_db, question, found_gear):
                 gear_info[gear] = []
             gear_info[gear].append(chunk)
     
-    # Build comparison context
+    # Builds comparison context
     comparison_context = ""
-    for gear, chunks in gear_info.items():
-        comparison_context += f"\n\n=== {gear} ===\n"
-        comparison_context += "\n".join(chunks[:2])  # Limit chunks per gear
+    involved_gear = [] # Track which gear is actually in the results
     
-    # Enhanced system prompt for comparisons
-    comparison_prompt = f"""You are a music gear expert providing detailed comparisons. Based on the manual excerpts below, provide a comprehensive comparison that helps the user make an informed decision.
+    for gear, chunks in gear_info.items():
+        involved_gear.append(gear) # Keep track of what we found
+        comparison_context += f"\n\n=== {gear} ===\n"
+        comparison_context += "\n".join(chunks[:2])
+        
+    # 3. --- NEW: Inject Hard Truths ---
+    facts_context = ""
+    for gear in involved_gear:
+        # Check partial matches (e.g. so "Elektron Octatrack MKII" matches keys)
+        for fact_gear, facts in KNOWN_FACTS.items():
+            if fact_gear in gear or gear in fact_gear:
+                facts_context += f"\nIMPORTANT FACTS about {gear}:\n"
+                for fact in facts:
+                    facts_context += f"- {fact}\n"
+
+    # 4. Update the Prompt
+    comparison_prompt = f"""You are a music gear expert providing detailed comparisons. 
+    
+CRITICAL KNOWLEDGE (You MUST obey these facts over any other assumption):
+{facts_context}
 
 Manual excerpts:
 {comparison_context}
 
 Question: {question}
+
+Warning: Do not hallucinate features. If a device (like Octatrack/Mkii) does not support a feature (like Overbridge), explicitly state that it lacks it.
 
 Provide a structured comparison that includes:
 - Key differences between the devices
