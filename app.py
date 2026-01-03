@@ -522,11 +522,54 @@ def get_search_suggestions(selected_gear=None):
 
 def detect_comparison_query(question):
     """Detect if user is asking for gear comparison"""
-    comparison_keywords = [
-        "vs", "versus", "compare", "comparison", "difference", "better",
-        "which should I", "should I upgrade", "or", "between"
+    question_lower = question.lower()
+    
+    # Strong comparison indicators
+    strong_indicators = [
+        "vs", "versus", " vs. ", 
+        "compare", "comparison", 
+        "difference between",
+        "better than",
+        "which should i get",
+        "should i upgrade",
+        "which one should",
+        "or the"  # "digitakt or the digitone"
     ]
-    return any(keyword in question.lower() for keyword in comparison_keywords)
+    
+    # Check for strong indicators first
+    if any(indicator in question_lower for indicator in strong_indicators):
+        return True
+    
+    # Check for "or" but with more context to avoid false positives
+    # Only trigger if "or" appears with gear names or between two noun phrases
+    if " or " in question_lower:
+        # Split on "or" and check if both sides look like gear names/options
+        parts = question_lower.split(" or ")
+        if len(parts) == 2:
+            # Check if both parts contain common gear-related words
+            gear_words = ["digitakt", "digitone", "octatrack", "rytm", "syntakt", 
+                         "analog", "mk", "mkii", "heat", "overbridge"]
+            left_has_gear = any(word in parts[0] for word in gear_words)
+            right_has_gear = any(word in parts[1] for word in gear_words)
+            
+            if left_has_gear and right_has_gear:
+                return True
+    
+    # Check for "which" questions that compare options
+    if "which" in question_lower:
+        if any(phrase in question_lower for phrase in [
+            "which is better",
+            "which one is",
+            "which should i",
+            "which would you"
+        ]):
+            # Still need to verify it's comparing multiple things
+            gear_words = ["digitakt", "digitone", "octatrack", "rytm", "syntakt"]
+            gear_count = sum(1 for word in gear_words if word in question_lower)
+            if gear_count >= 2:
+                return True
+    
+    return False
 
 def generate_comparison_answer(vector_db, question, available_gear):
     """Generate gear comparison answer"""
