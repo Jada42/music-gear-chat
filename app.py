@@ -17,6 +17,45 @@ load_dotenv()
 # Initialize OpenAI
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# --- LLM Rate Safety stuff ----
+
+import time
+
+# --- Rate Limiting Logic ---
+RATE_LIMIT_REQUESTS = 5  # Max requests allowed
+RATE_LIMIT_WINDOW = 60   # Time window in seconds (e.g., 5 requests per minute)
+
+def initialize_session_state():
+    """Initialize session state variables for rate limiting if they don't exist."""
+    if "api_timestamps" not in st.session_state:
+        st.session_state.api_timestamps = []
+    if "total_requests" not in st.session_state:
+        st.session_state.total_requests = 0
+
+def check_rate_limit(max_requests=RATE_LIMIT_REQUESTS, window=RATE_LIMIT_WINDOW):
+    """
+    Check if the user has exceeded the rate limit.
+    Returns True if allowed, False if blocked.
+    """
+    now = time.time()
+    
+    # 1. Clean up old timestamps (outside the time window)
+    # We keep only timestamps that are recent
+    st.session_state.api_timestamps = [
+        t for t in st.session_state.api_timestamps 
+        if now - t < window
+    ]
+    
+    # 2. Check if the user has hit the limit
+    if len(st.session_state.api_timestamps) >= max_requests:
+        return False
+    
+    # 3. If allowed, record this attempt timestamp
+    st.session_state.api_timestamps.append(now)
+    st.session_state.total_requests += 1
+    
+    return True
+
 # --- Custom CSS for Modern UI ---
 def load_custom_css():
     st.markdown("""
@@ -302,37 +341,55 @@ import re
 
 def chunk_text(text, max_size=1200, overlap=200):
     """
-    NEW CHUNKING UPDATE NOV 06.2025! Added an semantic chunker for the Elektron manuals:
-    - Splits on headings / uppercase section titles (should be better for multi-step midi stuff or outliers)
-    - Preserves multi-page workflows
-    
+    NEW: Updated Jan. 2026. Smart chunking for Elektron manuals.
+    : adds a "Safety Break": if a chunk is too big, it forces a split by character length to ensure data is retrievable.
+    Priority 1: Split by headers (Semantic).
+    Priority 2: Split by length (Safety).
     """
+    
+    # 1. Attempt semantic split based on Headers
+    # This regex looks for lines that are ALL CAPS or Title Case, followed by newline
+    parts = re.split(r"(?=\n[A-Z][A-Z0-9\s\-/()]{3,}\n|\n[A-Z][a-z]+ [A-Z][a-z]+(?: [A-Z][a-z]+)*\n)", text)
 
-    # Split on typical Elektron section patterns
-    parts = re.split(
-        r"(?=\n[A-Z][A-Za-z0-9\s\-/()]{4,}\n)",  # SECTION HEADERS
-        text
-    )
-
+    # 2. Safety Check: If no headers were found, parts will be [whole_text]
+    # We need to ensure we don't end up with one massive chunk, (chunking by headers made massive chunks)
     chunks = []
     current = ""
 
     for part in parts:
-        # If adding this section stays under limit → keep growing chunk
+        # If adding this part stays under limit → keep growing chunk
         if len(current) + len(part) < max_size:
             current += part
         else:
-            # Store previous chunk
+            # Store previous chunk if it has content
             if current.strip():
                 chunks.append(current.strip())
-            # Start new one
-            current = part
+            
+            # SAFETY BREAK: If the 'part' itself is HUGE (e.g. a page with no headers),
+            # we cannot just set current = part. We must manually break it.
+            if len(part) > max_size:
+                # Split the huge part into smaller pieces by paragraph
+                paragraphs = part.split("\n\n")
+                temp_chunk = ""
+                for para in paragraphs:
+                    if len(temp_chunk) + len(para) < max_size:
+                        temp_chunk += "\n\n" + para
+                    else:
+                        if temp_chunk.strip():
+                            chunks.append(temp_chunk.strip())
+                        temp_chunk = para
+                current = temp_chunk # Remaining text goes into current
+            else:
+                # Start new one with regular sized part
+                current = part
 
-    # final chunk
+    # Add final chunk
     if current.strip():
         chunks.append(current.strip())
 
-    # Add overlap for search recall
+    # 3. Add Overlap
+    # We add the tail of the previous chunk to the head of the next one
+    # This ensures context isn't lost at boundaries
     final_chunks = []
     for i, c in enumerate(chunks):
         if i == 0:
@@ -809,6 +866,12 @@ def main():
     )
     
     load_custom_css()
+
+    # ---- New ----
+
+    initialize_session_state()
+
+    # --------------
     
     st.title("Music Gear GPT")
     st.markdown("#### *Chat with your gear's manual:*")
@@ -835,21 +898,34 @@ def main():
         gear_name = st.sidebar.text_input("Gear name (e.g., 'Octatrack MK2')", key="gear_name_input")
         
         if uploaded_file and gear_name:
+            #generally updating the pdf uploads
             if st.sidebar.button("Add Manual", key="add_manual_button"):
-                with st.spinner("Processing manual..."):
-                    try:
-                        text = extract_text_from_pdf(uploaded_file)
-                        if len(text.strip()) > 100:
-                            success = add_manual_to_db(vector_db, text, gear_name)
-                            if success:
-                                st.sidebar.success(f"✅ Added {gear_name} manual!")
-                                st.rerun()
+                # Simple check to prevent double clicks
+                if "last_upload_time" in st.session_state and (time.time() - st.session_state.last_upload_time < 10):
+                    st.sidebar.warning("Please wait a few seconds before uploading another file.")
+                    # We don't need 'st.stop()' here if we structure it with 'else'
+                    # because the code below is in a different block.
+                else:
+                    # Updates the timestamp here
+                    st.session_state.last_upload_time = time.time()
+                    
+                    # ONLY runs this spinner and processing if the 'else' condition is met
+                    with st.spinner("Processing manual..."):
+                        try:
+                            text = extract_text_from_pdf(uploaded_file)
+                            
+                            if len(text.strip()) > 100:
+                                success = add_manual_to_db(vector_db, text, gear_name)
+                                if success:
+                                    st.sidebar.success(f"✅ Added {gear_name} manual!")
+                                    st.rerun()
+                                else:
+                                    st.sidebar.error("Failed to add manual.")
                             else:
-                                st.sidebar.error("Failed to add manual.")
-                        else:
-                            st.sidebar.error("PDF appears to be empty or unreadable.")
-                    except Exception as e:
-                        st.sidebar.error(f"Error processing PDF: {str(e)}")
+                                st.sidebar.error("PDF appears to be empty or unreadable.")
+                                
+                        except Exception as e:
+                            st.sidebar.error(f"Error processing PDF: {str(e)}")
     
     st.sidebar.markdown("---")
     
@@ -913,6 +989,27 @@ def main():
             ask_button_pressed = st.button("Ask", type="primary", key="ask_button_main")
         
         if ask_button_pressed:
+            
+            # --- RATE LIMIT CHECK ---
+            if not check_rate_limit():
+                # Calculate time until they can ask again
+                now = time.time()
+                oldest_req = st.session_state.api_timestamps[0]
+                wait_time = int(RATE_LIMIT_WINDOW - (now - oldest_req)) + 1
+                
+                st.error(f"⚠️ **Whoa, slow down!** You've reached the request limit.")
+                st.info(f"Please wait **{wait_time} seconds** before asking another question to ensure fair usage and system stability.")
+                st.stop() # Stop execution here
+
+            # ---- Hard Cap -----
+
+            MAX_DAILY_REQUESTS = 50 
+            if st.session_state.total_requests > MAX_DAILY_REQUESTS:
+                st.error("⛔ You have reached the maximum number of questions for this session. Please refresh the page to start a new session.")
+                st.stop()
+            
+            # --- END RATE LIMIT CHECK ---
+            
             if not question:
                 st.warning("Please enter a question!")
             elif not available_gear:
