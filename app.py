@@ -22,8 +22,8 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 import time
 
 # --- Rate Limiting Logic ---
-RATE_LIMIT_REQUESTS = 5  # Max requests allowed
-RATE_LIMIT_WINDOW = 60   # Time window in seconds (e.g., 5 requests per minute)
+RATE_LIMIT_REQUESTS = 3  # Max requests allowed
+RATE_LIMIT_WINDOW = 60   # Time window in seconds (e.g., 5 requests per minute) # lowered to 3, can increase after user feedback
 
 def initialize_session_state():
     """Initialize session state variables for rate limiting if they don't exist."""
