@@ -863,5 +863,5 @@ def main():
 **Support:** [Elektron Support](https://www.elektron.se/support/) · [Contact](https://www.elektron.se/support/contact/)
 """)
 
-def run_app():
+if __name__ == "__main__":
     main()
