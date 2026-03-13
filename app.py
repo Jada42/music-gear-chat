@@ -647,11 +647,16 @@ def main():
     st.markdown("#### *Chat with your gear's manual:*")
     st.markdown("---")
 
-    # API key gate (should still show UI)
-    if not os.getenv("OPENAI_API_KEY"):
-        st.error("⚠️ Please set your OpenAI API key in the .env file or environment variables")
-        st.code("export OPENAI_API_KEY='your-api-key-here'")
-        return
+    # API key handling
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        st.sidebar.warning("⚠️ OpenAI API Key required")
+        api_key = st.sidebar.text_input("Enter your OpenAI API Key:", type="password")
+        if not api_key:
+            st.info("👈 Please enter your OpenAI API key in the sidebar to start chatting with your gear manuals!")
+            return
+    
+    openai.api_key = api_key
 
     vector_db = init_components()
 
