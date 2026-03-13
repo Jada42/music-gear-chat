@@ -472,7 +472,7 @@ def detect_comparison_query(question):
     ]
     return any(keyword in question.lower() for keyword in comparison_keywords)
 
-def generate_comparison_answer(vector_db, question, available_gear):
+def generate_comparison_answer(vector_db, question, available_gear, model_name):
     """Generate gear comparison answer"""
     # Search across all gear for comparison
     all_results = search_manual(vector_db, question, gear_filter=None, n_results=6)
@@ -755,7 +755,7 @@ def main():
                             st.markdown("---")
                             st.subheader("⚖️ Gear Comparison:")
                             
-                            comparison_answer = generate_comparison_answer(vector_db, question, available_gear)
+                            comparison_answer = generate_comparison_answer(vector_db, question, available_gear, model_name)
                             if comparison_answer:
                                 st.markdown(f"<div class='card'>{comparison_answer}</div>", unsafe_allow_html=True)
                                 
@@ -804,7 +804,7 @@ def main():
 
                             else:
                                 context_chunks = results["documents"][0]
-                                answer = generate_answer(context_chunks, clean_question, model_name)
+                                answer = generate_answer(context_chunks, question, model_name)
 
                                 st.markdown("---")
                                 st.subheader("💡 Answer:")
