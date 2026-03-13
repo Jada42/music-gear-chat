@@ -164,10 +164,14 @@ def load_custom_css(is_light=False):
             border: 1px solid #c2cbd1;
             border-left: 4px solid #0d4bca; /* Cyber blue card accent */
             border-radius: 4px;
-            color: #1a1d24;
+            color: #1a1d24 !important;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 2rem;
+            display: block;
         }
         </style>
         """
@@ -306,10 +310,14 @@ def load_custom_css(is_light=False):
             border: 1px solid #2a2e38;
             border-left: 4px solid #66fcf1; /* Cyber cyan card accent */
             border-radius: 4px;
-            color: #e0e5ec;
+            color: #e0e5ec !important;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 2rem;
+            display: block;
         }
         </style>
         """
@@ -655,9 +663,10 @@ Format your answer with clear sections and direct, actionable advice."""
             ],
             max_completion_tokens=800
         )
-        return response.choices[0].message.content
+        result = response.choices[0].message.content
+        return result if result else "LLM returned an empty response for comparison."
     except Exception as e:
-        return f"Error generating comparison: {str(e)}"
+        return f"Error generating response: {str(e)}"
 
 def generate_answer(context_chunks, question, model_name):
     context = "\n\n".join(context_chunks)
@@ -765,7 +774,8 @@ Query: {question}"""
             ],
             max_completion_tokens=500
         )
-        return response.choices[0].message.content
+        result = response.choices[0].message.content
+        return result if result else "LLM returned an empty response. Try rephrasing or choosing a different model."
     except Exception as e:
         return f"Error generating response: {str(e)}"
 
@@ -894,9 +904,7 @@ def main():
                             
                             comparison_answer = generate_comparison_answer(vector_db, question, available_gear, model_name)
                             if comparison_answer:
-                                st.markdown(f"<div class='card'>", unsafe_allow_html=True)
-                                st.markdown(comparison_answer)
-                                st.markdown("</div>", unsafe_allow_html=True)
+                                st.markdown(f"<div class='card'>{comparison_answer}</div>", unsafe_allow_html=True)
                                 
                                 # Also show individual results for reference
                                 with st.expander("📖 Detailed manual excerpts", expanded=False):
@@ -947,9 +955,7 @@ def main():
 
                                 st.markdown("---")
                                 st.subheader("💡 Answer:")
-                                st.markdown(f"<div class='card'>", unsafe_allow_html=True)
-                                st.markdown(answer)
-                                st.markdown("</div>", unsafe_allow_html=True)
+                                st.markdown(f"<div class='card'>{answer}</div>", unsafe_allow_html=True)
 
                                 with st.expander("📖 Show source excerpts from manuals", expanded=False):
                                     for i, chunk in enumerate(context_chunks):
