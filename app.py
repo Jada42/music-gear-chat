@@ -30,8 +30,9 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 def load_custom_css():
     st.markdown("""
     <style>
-    .stApp {
-        position: relative; /* anchor pseudo-elements */
+    /* Attach background gradient to main app container */
+    [data-testid="stAppViewContainer"] {
+        position: relative; 
         background:
             radial-gradient(1200px 800px at 10% 10%, rgba(43,28,77,0.55) 0%, rgba(19,15,36,0.35) 35%, rgba(7,6,14,0.25) 60%, rgba(0,0,0,0.2) 100%),
             linear-gradient(135deg, #0b1021 0%, #141b3a 35%, #2a1b4d 70%, #3a1f5e 100%);
@@ -41,20 +42,21 @@ def load_custom_css():
     }
 
     /* Glow blobs BEHIND content */
-    .stApp:before, .stApp:after {
+    [data-testid="stAppViewContainer"]:before, [data-testid="stAppViewContainer"]:after {
         content: "";
         position: fixed;
         top: -20vh; left: -20vw;
         width: 60vw; height: 60vw;
         background:
-            radial-gradient(circle at 30% 30%, rgba(124,77,255,0.35), rgba(124,77,255,0) 60%),
-            radial-gradient(circle at 70% 70%, rgba(91,108,255,0.28), rgba(91,108,255,0) 60%);
+            radial-gradient(circle at 30% 30%, rgba(124,77,255,0.25), rgba(124,77,255,0) 60%),
+            radial-gradient(circle at 70% 70%, rgba(91,108,255,0.18), rgba(91,108,255,0) 60%);
         filter: blur(40px);
         animation: floatBlob 24s ease-in-out infinite alternate;
         pointer-events: none;
-        z-index: -1; /* key fix */
+        z-index: 0; 
     }
-    .stApp:after {
+    
+    [data-testid="stAppViewContainer"]:after {
         top: auto; bottom: -25vh;
         left: auto; right: -20vw;
         animation-duration: 28s;
@@ -67,15 +69,16 @@ def load_custom_css():
         100% { transform: translate3d(-3vw,5vh,0) scale(0.98); opacity: 0.75; }
     }
 
-    .block-container, .stSidebar, [data-testid="stSidebar"] {
+    /* Ensure content stays ABOVE the background elements */
+    [data-testid="stHeader"], .block-container, [data-testid="stSidebar"] {
         position: relative;
-        z-index: 1; /* ensure content above background */
+        z-index: 10; 
     }
 
-    /* Base text color (avoid forcing all descendants) */
+    /* Base text color */
     .stApp { color: #E6E6F0; }
 
-    .stSidebar {
+    [data-testid="stSidebar"] {
         background: rgba(18, 22, 40, 0.55) !important;
         backdrop-filter: blur(16px) saturate(140%);
         -webkit-backdrop-filter: blur(16px) saturate(140%);
@@ -102,10 +105,7 @@ def load_custom_css():
         background: rgba(10, 12, 24, 0.35);
         border: 1px solid rgba(255,255,255,0.08);
         border-radius: 20px;
-        backdrop-filter: blur(14px) saturate(140%);
-        -webkit-backdrop-filter: blur(14px) saturate(140%);
         box-shadow: 0 30px 80px rgba(8, 6, 20, 0.45);
-        min-height: 60vh;
     }
 
     h1, h2, h3 {
@@ -179,8 +179,6 @@ def load_custom_css():
         margin-bottom: 1.5rem;
     }
 
-    .stApp header[data-testid="stHeader"] { display: none !important; }
-    button[title="Settings"] { display: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
