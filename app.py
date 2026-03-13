@@ -26,153 +26,302 @@ load_dotenv()
 # Initialize OpenAI
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# --- Custom CSS for Modern UI ---
-def load_custom_css():
-    st.markdown("""
-    <style>
-    /* Attaching 90s solid background */
-    [data-testid="stAppViewContainer"] {
-        position: relative; 
-        background: #c0c0c0; /* Classic Win95 grey */
-        color: #000000 !important;
-        font-family: 'Pixel', 'Tahoma', 'MS Sans Serif', sans-serif !important;
-        background-attachment: fixed;
-        overflow-x: hidden;
-    }
+# --- Custom CSS for Modern UI (Ai Assisted ---
+def load_custom_css(is_light=False):
+    if is_light:
+        css = """
+        <style>
+        /* Sleek Theme */
+        [data-testid="stAppViewContainer"] {
+            position: relative; 
+            background: #e8ecef; /* Light tech grey */
+            color: #1a1d24 !important;
+            font-family: 'Inter', -apple-system, sans-serif !important;
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
 
-    /* Remove modern blur effects */
-    [data-testid="stAppViewContainer"]:before, [data-testid="stAppViewContainer"]:after {
-        display: none;
-    }
+        /* Subtle grid overlay */
+        [data-testid="stAppViewContainer"]:before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+            z-index: 0; 
+        }
 
-    /* Ensure content stays ABOVE the background elements */
-    [data-testid="stHeader"], .block-container, [data-testid="stSidebar"] {
-        position: relative;
-        z-index: 10; 
-    }
+        /* Ensure content stays ABOVE the background elements */
+        [data-testid="stHeader"], .block-container, [data-testid="stSidebar"] {
+            position: relative;
+            z-index: 10; 
+        }
 
-    /* Base text color */
-    .stApp, p, span, label, div { 
-        color: #000000;
-        font-family: 'Tahoma', 'MS Sans Serif', sans-serif !important;
-    }
+        /* Base text color */
+        .stApp, p, span, label, div { 
+            color: #1a1d24;
+        }
 
-    /* Arrow and icon visibility */
-    svg {
-        fill: #000000 !important;
-        stroke: #000000 !important;
-    }
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #d8e0e5 0%, #e8ecef 100%) !important;
+            border-right: 1px solid #c2cbd1;
+            padding: 1rem;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.05);
+        }
 
-    [data-testid="stSidebar"] {
-        background: #c0c0c0 !important;
-        border-right: 2px solid;
-        border-color: #dfdfdf #404040 #404040 #dfdfdf; /* Retro bevel */
-        padding: 1rem;
-    }
+        /* Input fields - machined look */
+        .stSelectbox > div > div,
+        .stTextInput > div > div > input,
+        .stTextArea > div > div > textarea {
+            background: #f4f7f9 !important;
+            color: #0d4bca !important; /* Cyber blue text */
+            border: 1px solid #c2cbd1 !important;
+            border-radius: 4px !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            font-family: 'Courier New', Courier, monospace;
+        }
 
-    /* Input fields - inset bevel */
-    .stSelectbox > div > div,
-    .stTextInput > div > div > input,
-    .stTextArea > div > div > textarea {
-        background: #ffffff !important;
-        color: #000000 !important;
-        border: 2px solid !important;
-        border-color: #808080 #ffffff #ffffff #808080 !important; /* Inset 3D effect */
-        border-radius: 0px !important;
-        font-family: 'Courier New', Courier, monospace;
-        font-weight: bold;
-    }
+        .main .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            padding-left: 3rem;
+            padding-right: 3rem;
+            background: rgba(248, 250, 252, 0.85);
+            border: 1px solid #c2cbd1;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
 
-    .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-        padding-left: 3rem;
-        padding-right: 3rem;
-        background: #c0c0c0;
-        border: 2px solid;
-        border-color: #dfdfdf #404040 #404040 #dfdfdf; /* Outset 3D effect */
-    }
+        h1, h2, h3 {
+            color: #1a1d24;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #d92525; /* Electronic Red */
+            display: inline-block;
+            padding-bottom: 4px;
+            font-weight: 800;
+        }
 
-    h1, h2, h3 {
-        color: #000000;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        text-shadow: 1px 1px 0px #ffffff;
-        border-bottom: 2px solid #808080;
-        display: inline-block;
-        padding-bottom: 2px;
-        font-weight: bold;
-    }
+        /* Sleek Hardware Button */
+        button {
+            border-radius: 4px !important;
+            background: #ffffff !important;
+            color: #1a1d24 !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 1px !important;
+            border: 1px solid #c2cbd1 !important;
+            border-left: 3px solid #d92525 !important; /* Accent stripe */
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+        }
 
-    /* Retro 90s Button */
-    .stButton>button {
-        border-radius: 0px;
-        background: #c0c0c0;
-        color: #000000;
-        font-weight: bold;
-        text-transform: uppercase;
-        padding: 6px 12px;
-        border: 2px solid;
-        border-color: #ffffff #404040 #404040 #ffffff; /* Classic button bevel */
-    }
+        button:hover {
+            background: #f4f7f9 !important;
+            border-color: #a0aeb8 !important;
+            border-left: 3px solid #0d4bca !important; /* Cyber blue hover */
+            box-shadow: 0 4px 12px rgba(13, 75, 202, 0.15) !important;
+            color: #1a1d24 !important;
+        }
 
-    .stButton>button:hover {
-        background: #dfdfdf;
-        border-color: #ffffff #404040 #404040 #ffffff;
-    }
+        button:active { 
+            transform: translateY(1px) !important;
+        }
 
-    .stButton>button:active { 
-        border-color: #404040 #ffffff #ffffff #404040; /* Pressed state */
-        transform: translate(1px, 1px);
-    }
+        .stTextInput input, .stTextArea textarea {
+            border-radius: 4px;
+            padding: 10px 12px;
+            background: #f4f7f9;
+            transition: all 0.2s ease;
+        }
 
-    .stTextInput input, .stTextArea textarea {
-        border-radius: 0px;
-        padding: 8px 10px;
-        background: #ffffff;
-    }
+        .stTextInput input:focus, .stTextArea textarea:focus {
+            border-color: #d92525 !important; 
+            box-shadow: 0 0 0 1px #d92525;
+            outline: none;
+        }
 
-    .stTextInput input:focus, .stTextArea textarea:focus {
-        border-color: #000000 !important; /* Simple black border on focus */
-        outline: none;
-        box-shadow: none;
-    }
+        .stExpander {
+            border-radius: 4px;
+            border: 1px solid #c2cbd1;
+            background: #ffffff;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
 
-    .stExpander {
-        border-radius: 0px;
-        border: 2px solid;
-        border-color: #dfdfdf #404040 #404040 #dfdfdf;
-        background: #c0c0c0;
-        margin-bottom: 1rem;
-    }
+        .stExpander header {
+            font-weight: 600;
+            color: #1a1d24;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: #f4f7f9; 
+            border-bottom: 1px solid #c2cbd1;
+        }
+        
+        .card {
+            background: #ffffff;
+            border: 1px solid #c2cbd1;
+            border-left: 4px solid #0d4bca; /* Cyber blue card accent */
+            border-radius: 4px;
+            color: #1a1d24;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        </style>
+        """
+    else:
+        css = """
+        <style>
+        /* Sleek Dark Theme */
+        [data-testid="stAppViewContainer"] {
+            position: relative; 
+            background: #12141a; /* Very dark tech grey */
+            color: #e0e5ec !important;
+            font-family: 'Inter', -apple-system, sans-serif !important;
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
 
-    .stExpander header {
-        font-weight: bold;
-        color: #000000;
-        text-transform: uppercase;
-        padding: 0.5rem 0.75rem;
-        background: #000080; /* Win95 Titlebar Blue */
-        color: #ffffff;      /* White text for titlebar */
-        border-bottom: 2px solid #dfdfdf;
-    }
-    
-    /* Make expander arrows white since header is blue */
-    .stExpander header svg {
-        fill: #ffffff !important;
-        stroke: #ffffff !important;
-    }
+        /* Subtle grid overlay */
+        [data-testid="stAppViewContainer"]:before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+            z-index: 0; 
+        }
 
-    .card {
-        background: #c0c0c0;
-        border: 2px solid;
-        border-color: #ffffff #404040 #404040 #ffffff; /* Outset bevel */
-        color: #000000;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
+        /* Ensure content stays ABOVE the background elements */
+        [data-testid="stHeader"], .block-container, [data-testid="stSidebar"] {
+            position: relative;
+            z-index: 10; 
+        }
 
-    </style>
-    """, unsafe_allow_html=True)
+        /* Base text color */
+        .stApp, p, span, label, div { 
+            color: #e0e5ec;
+        }
+
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #1a1d24 0%, #12141a 100%) !important;
+            border-right: 1px solid #2a2e38;
+            padding: 1rem;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        }
+
+        /* Input fields - machined look */
+        .stSelectbox > div > div,
+        .stTextInput > div > div > input,
+        .stTextArea > div > div > textarea {
+            background: #0b0c10 !important;
+            color: #66fcf1 !important; /* Cyan phosphor text */
+            border: 1px solid #2a2e38 !important;
+            border-radius: 4px !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .main .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            padding-left: 3rem;
+            padding-right: 3rem;
+            background: rgba(26, 29, 36, 0.7);
+            border: 1px solid #2a2e38;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        h1, h2, h3 {
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #ff4b4b; /* Electronic Red */
+            display: inline-block;
+            padding-bottom: 4px;
+            font-weight: 800;
+        }
+
+        /* Sleek Hardware Button */
+        button {
+            border-radius: 4px !important;
+            background: #1a1d24 !important;
+            color: #e0e5ec !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 1px !important;
+            border: 1px solid #2a2e38 !important;
+            border-left: 3px solid #ff4b4b !important; /* Accent stripe */
+            transition: all 0.2s ease !important;
+        }
+
+        button:hover {
+            background: #2a2e38 !important;
+            border-color: #4a5568 !important;
+            border-left: 3px solid #66fcf1 !important; /* Cyber cyan hover */
+            box-shadow: 0 4px 12px rgba(102, 252, 241, 0.15) !important;
+            color: #ffffff !important;
+        }
+
+        button:active { 
+            transform: translateY(1px) !important;
+        }
+
+        .stTextInput input, .stTextArea textarea {
+            border-radius: 4px;
+            padding: 10px 12px;
+            background: #0b0c10;
+            transition: all 0.2s ease;
+        }
+
+        .stTextInput input:focus, .stTextArea textarea:focus {
+            border-color: #ff4b4b !important; 
+            box-shadow: 0 0 0 1px #ff4b4b;
+            outline: none;
+        }
+
+        .stExpander {
+            border-radius: 4px;
+            border: 1px solid #2a2e38;
+            background: #1a1d24;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .stExpander header {
+            font-weight: 600;
+            color: #e0e5ec;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: #1e222b; 
+            border-bottom: 1px solid #2a2e38;
+        }
+        
+        .card {
+            background: #1a1d24;
+            border: 1px solid #2a2e38;
+            border-left: 4px solid #66fcf1; /* Cyber cyan card accent */
+            border-radius: 4px;
+            color: #e0e5ec;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        </style>
+        """
+
+    st.markdown(css, unsafe_allow_html=True)
+
 
 # -----------------------------
 # Simple Vector Database (FAISS)
@@ -629,7 +778,9 @@ Query: {question}"""
         return f"Error generating response: {str(e)}"
 
 def main():
-    load_custom_css()
+    st.sidebar.header("⚙️ Settings")
+    is_light_mode = st.sidebar.toggle("☀️ Light Mode", value=False)
+    load_custom_css(is_light=is_light_mode)
     
     st.title("Music Gear GPT")
     st.markdown("#### *Chat with your gear's manual:*")
