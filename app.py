@@ -894,7 +894,9 @@ def main():
                             
                             comparison_answer = generate_comparison_answer(vector_db, question, available_gear, model_name)
                             if comparison_answer:
-                                st.markdown(f"<div class='card'>{comparison_answer}</div>", unsafe_allow_html=True)
+                                st.markdown(f"<div class='card'>", unsafe_allow_html=True)
+                                st.markdown(comparison_answer)
+                                st.markdown("</div>", unsafe_allow_html=True)
                                 
                                 # Also show individual results for reference
                                 with st.expander("📖 Detailed manual excerpts", expanded=False):
@@ -945,7 +947,9 @@ def main():
 
                                 st.markdown("---")
                                 st.subheader("💡 Answer:")
-                                st.markdown(f"<div class='card'>{answer}</div>", unsafe_allow_html=True)
+                                st.markdown(f"<div class='card'>", unsafe_allow_html=True)
+                                st.markdown(answer)
+                                st.markdown("</div>", unsafe_allow_html=True)
 
                                 with st.expander("📖 Show source excerpts from manuals", expanded=False):
                                     for i, chunk in enumerate(context_chunks):
