@@ -763,7 +763,7 @@ Query: {question}"""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            max_:completion_tokens=500
+            max_completion_tokens=500
         )
         return response.choices[0].message.content
     except Exception as e:
