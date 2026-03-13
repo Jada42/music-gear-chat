@@ -30,43 +30,19 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 def load_custom_css():
     st.markdown("""
     <style>
-    /* Attach background gradient to main app container */
+    /* Attaching 90s solid background */
     [data-testid="stAppViewContainer"] {
         position: relative; 
-        background:
-            radial-gradient(1200px 800px at 10% 10%, rgba(43,28,77,0.55) 0%, rgba(19,15,36,0.35) 35%, rgba(7,6,14,0.25) 60%, rgba(0,0,0,0.2) 100%),
-            linear-gradient(135deg, #0b1021 0%, #141b3a 35%, #2a1b4d 70%, #3a1f5e 100%);
+        background: #c0c0c0; /* Classic Win95 grey */
+        color: #000000 !important;
+        font-family: 'Pixel', 'Tahoma', 'MS Sans Serif', sans-serif !important;
         background-attachment: fixed;
-        color: #EAEAF4 !important;
         overflow-x: hidden;
     }
 
-    /* Glow blobs BEHIND content */
+    /* Remove modern blur effects */
     [data-testid="stAppViewContainer"]:before, [data-testid="stAppViewContainer"]:after {
-        content: "";
-        position: fixed;
-        top: -20vh; left: -20vw;
-        width: 60vw; height: 60vw;
-        background:
-            radial-gradient(circle at 30% 30%, rgba(124,77,255,0.25), rgba(124,77,255,0) 60%),
-            radial-gradient(circle at 70% 70%, rgba(91,108,255,0.18), rgba(91,108,255,0) 60%);
-        filter: blur(40px);
-        animation: floatBlob 24s ease-in-out infinite alternate;
-        pointer-events: none;
-        z-index: 0; 
-    }
-    
-    [data-testid="stAppViewContainer"]:after {
-        top: auto; bottom: -25vh;
-        left: auto; right: -20vw;
-        animation-duration: 28s;
-        transform: rotate(15deg);
-    }
-
-    @keyframes floatBlob {
-        0%   { transform: translate3d(0,0,0) scale(1.0); opacity: 0.8; }
-        50%  { transform: translate3d(4vw,3vh,0) scale(1.05); opacity: 0.9; }
-        100% { transform: translate3d(-3vw,5vh,0) scale(0.98); opacity: 0.75; }
+        display: none;
     }
 
     /* Ensure content stays ABOVE the background elements */
@@ -76,25 +52,35 @@ def load_custom_css():
     }
 
     /* Base text color */
-    .stApp { color: #E6E6F0; }
-
-    [data-testid="stSidebar"] {
-        background: rgba(18, 22, 40, 0.55) !important;
-        backdrop-filter: blur(16px) saturate(140%);
-        -webkit-backdrop-filter: blur(16px) saturate(140%);
-        border-right: 1px solid rgba(255,255,255,0.08);
-        padding: 1rem;
-        box-shadow: 2px 0 24px rgba(10,10,30,0.45);
+    .stApp, p, span, label, div { 
+        color: #000000;
+        font-family: 'Tahoma', 'MS Sans Serif', sans-serif !important;
     }
 
+    /* Arrow and icon visibility */
+    svg {
+        fill: #000000 !important;
+        stroke: #000000 !important;
+    }
+
+    [data-testid="stSidebar"] {
+        background: #c0c0c0 !important;
+        border-right: 2px solid;
+        border-color: #dfdfdf #404040 #404040 #dfdfdf; /* Retro bevel */
+        padding: 1rem;
+    }
+
+    /* Input fields - inset bevel */
     .stSelectbox > div > div,
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea {
-        background: rgba(255,255,255,0.08) !important;
-        color: #EAEAF4 !important;
-        border: 1px solid rgba(255,255,255,0.12) !important;
-        border-radius: 14px;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+        background: #ffffff !important;
+        color: #000000 !important;
+        border: 2px solid !important;
+        border-color: #808080 #ffffff #ffffff #808080 !important; /* Inset 3D effect */
+        border-radius: 0px !important;
+        font-family: 'Courier New', Courier, monospace;
+        font-weight: bold;
     }
 
     .main .block-container {
@@ -102,80 +88,86 @@ def load_custom_css():
         padding-bottom: 2rem;
         padding-left: 3rem;
         padding-right: 3rem;
-        background: rgba(10, 12, 24, 0.35);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 20px;
-        box-shadow: 0 30px 80px rgba(8, 6, 20, 0.45);
+        background: #c0c0c0;
+        border: 2px solid;
+        border-color: #dfdfdf #404040 #404040 #dfdfdf; /* Outset 3D effect */
     }
 
     h1, h2, h3 {
-        color: #FFFFFF;
-        text-shadow: 0 0 12px rgba(124, 77, 255, 0.25);
+        color: #000000;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-shadow: 1px 1px 0px #ffffff;
+        border-bottom: 2px solid #808080;
+        display: inline-block;
+        padding-bottom: 2px;
+        font-weight: bold;
     }
 
+    /* Retro 90s Button */
     .stButton>button {
-        border-radius: 8px;
-        background: linear-gradient(135deg, #5b6cff 0%, #7c4dff 100%);
-        color: #FFFFFF;
-        padding: 10px 20px;
-        border: none;
-        box-shadow: 0 8px 24px rgba(124,77,255,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
-        transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 0px;
+        background: #c0c0c0;
+        color: #000000;
+        font-weight: bold;
+        text-transform: uppercase;
+        padding: 6px 12px;
+        border: 2px solid;
+        border-color: #ffffff #404040 #404040 #ffffff; /* Classic button bevel */
     }
 
     .stButton>button:hover {
-        filter: brightness(1.06);
-        box-shadow: 0 12px 30px rgba(124,77,255,0.45), inset 0 1px 0 rgba(255,255,255,0.2);
+        background: #dfdfdf;
+        border-color: #ffffff #404040 #404040 #ffffff;
     }
 
-    .stButton>button:active { filter: brightness(0.95); }
+    .stButton>button:active { 
+        border-color: #404040 #ffffff #ffffff #404040; /* Pressed state */
+        transform: translate(1px, 1px);
+    }
 
     .stTextInput input, .stTextArea textarea {
-        border-radius: 14px;
-        padding: 12px 14px;
-        background: rgba(255,255,255,0.08);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 0px;
+        padding: 8px 10px;
+        background: #ffffff;
     }
 
     .stTextInput input:focus, .stTextArea textarea:focus {
-        border-color: rgba(124,77,255,0.55) !important;
-        box-shadow: 0 0 0 3px rgba(124,77,255,0.25);
+        border-color: #000000 !important; /* Simple black border on focus */
         outline: none;
-    }
-
-    .stSelectbox div[data-baseweb="select"] > div {
-        border-radius: 14px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(255,255,255,0.08);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+        box-shadow: none;
     }
 
     .stExpander {
-        border-radius: 18px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(255,255,255,0.08);
-        backdrop-filter: blur(18px) saturate(140%);
-        -webkit-backdrop-filter: blur(18px) saturate(140%);
-        box-shadow: 0 12px 40px rgba(16,12,32,0.45);
+        border-radius: 0px;
+        border: 2px solid;
+        border-color: #dfdfdf #404040 #404040 #dfdfdf;
+        background: #c0c0c0;
         margin-bottom: 1rem;
     }
 
     .stExpander header {
         font-weight: bold;
-        color: #CDB7FF;
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid rgba(255,255,255,0.08);
+        color: #000000;
+        text-transform: uppercase;
+        padding: 0.5rem 0.75rem;
+        background: #000080; /* Win95 Titlebar Blue */
+        color: #ffffff;      /* White text for titlebar */
+        border-bottom: 2px solid #dfdfdf;
+    }
+    
+    /* Make expander arrows white since header is blue */
+    .stExpander header svg {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
     }
 
     .card {
-        background: rgba(255,255,255,0.10);
-        border: 1px solid rgba(255,255,255,0.18);
-        border-radius: 18px;
+        background: #c0c0c0;
+        border: 2px solid;
+        border-color: #ffffff #404040 #404040 #ffffff; /* Outset bevel */
+        color: #000000;
         padding: 1.5rem;
-        box-shadow: 0 20px 60px rgba(11,16,33,0.55), inset 0 1px 0 rgba(255,255,255,0.1);
-        backdrop-filter: blur(18px) saturate(160%);
-        -webkit-backdrop-filter: blur(18px) saturate(160%);
         margin-bottom: 1.5rem;
     }
 
@@ -267,7 +259,6 @@ class SimpleVectorDB:
                 self.documents = data["documents"]
                 self.metadatas = data["metadatas"]
                 self.embeddings = data["embeddings"]
-                st.sidebar.info(f"📚 Loaded {len(self.documents)} manual sections")
         except Exception as e:
             st.sidebar.warning(f"Starting with fresh database: {str(e)}")
 
@@ -354,7 +345,6 @@ def search_manual(vector_db, query, gear_filter=None, n_results=3):
 # -----------------------------
 def preload_elektron_manuals(vector_db):
     if len(vector_db.documents) > 0:
-        st.sidebar.info(f"📚 {len(vector_db.get_all_gear())} manuals already loaded")
         return
 
     manual_mappings = {
@@ -664,8 +654,8 @@ def main():
     # Model toggle
     st.sidebar.markdown("---")
     st.sidebar.subheader("🧠 Model")
-    fast_mode = st.sidebar.toggle("⚡ Fast mode (nano, cheaper/less careful)", value=False)
-    model_name = "gpt-5-nano" if fast_mode else "gpt-5-mini"
+    mini_mode = st.sidebar.toggle("⚡ Mini mode (for more complex tasks)", value=False)
+    model_name = "gpt-5-mini" if mini_mode else "gpt-5-nano"
     st.sidebar.caption(f"Using **{model_name}**")
 
     with st.sidebar.container():
@@ -705,8 +695,9 @@ def main():
 
     if available_gear:
         st.sidebar.markdown("---")
-        st.sidebar.subheader("📊 Stats")
-        st.sidebar.write(f"Total manual sections: {len(vector_db.documents)}")
+        st.sidebar.subheader("📊 Loaded Manuals")
+        for gear in sorted(available_gear):
+            st.sidebar.markdown(f"- **{gear}**")
 
     # Main chat interface
     col1, col2 = st.columns([0.7, 0.3])
