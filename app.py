@@ -604,8 +604,8 @@ def get_search_suggestions(selected_gear=None):
 def detect_comparison_query(question):
     """Detect if user is asking for gear comparison"""
     comparison_keywords = [
-        "vs", "versus", "compare", "comparison", "difference", "better",
-        "which should I", "should I upgrade", "or", "between"
+        "vs", "versus", "compare", "comparison", "difference",
+        "which should I", "should I upgrade", "between"
     ]
     return any(keyword in question.lower() for keyword in comparison_keywords)
 
